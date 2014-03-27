@@ -2,24 +2,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int gcd(int u, int v)
+unsigned int gcd(unsigned int u, unsigned int v)
 {
 	return (v != 0)?gcd(v, u%v):u;
 }
 
-int readnum()
+unsigned int readnum()
 {
-	int a;
-	printf("Insert a number = ");
-	scanf("%8d", &a);
-	return a;
+	sranddev();
+	return ((unsigned int)rand()) % 4096;
 }
 
 int main(void)
 {
-	int a = 0;
-	int b = 0;
-	int res = 0;
+	unsigned int a = 0;
+	unsigned int b = 0;
+	unsigned int res = 0;
 
 	a = readnum();
 	b = readnum();
