@@ -3,9 +3,20 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+static void pstack()
+{
+	call_stack my_stack;  
+	_gcc_trace_get_call_stack(&my_stack);
+	_gcc_trace_print_call_stack(&my_stack);
+}
+
 static void increment_int_ptr(int* int_ptr)
 {
 	*int_ptr = *int_ptr+1;
+	if(*int_ptr==2)
+	{
+		pstack();
+	}
 }
 
 static void thread_do_internal_work(int* int_ptr)
@@ -33,7 +44,6 @@ int main()
 	{
 		fprintf(stderr, "Error creating thread\n");
 		return 1;
-
 	}
 
 	while(y < 16)
@@ -45,7 +55,6 @@ int main()
 	{
 		fprintf(stderr, "Error joining thread\n");
 		return 2;
-
 	}
 
 	printf("x: %d, y: %d\n", x, y);
