@@ -9,7 +9,7 @@ unsigned int gcd(unsigned int u, unsigned int v)
 
 unsigned int readnum()
 {
-	sranddev();
+	srand(1);
 	return ((unsigned int)rand()) % 4096;
 }
 

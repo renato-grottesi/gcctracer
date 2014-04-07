@@ -1,5 +1,5 @@
-CC=gcc-mp-4.8
-CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_
+include ../examples.mak
+
 DEPS =  main.c ../../library/src/gcctrace.c
 OBJ = main.o ../../library/src/gcctrace.o
 
