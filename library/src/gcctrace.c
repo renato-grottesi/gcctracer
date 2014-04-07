@@ -27,7 +27,7 @@ static inline void _gcc_trace_format_string(char* str, const char* word, call_st
 
 	for(i=0; i<frame_index&& i<1023; i++) tabs[i]='\t';
 	tabs[i] = '\0';
-	snprintf(str, 4096, "%ld% s[%d] #%d %s %p from %p\n", 
+	snprintf(str, 4096, "%ld %s [%ld] #%d %s %p from %p\n", 
 		stack->frames[frame_index].time, 
 		tabs, 
 		stack->frames[frame_index].thread,
@@ -51,7 +51,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 
 	thread_stack.num_frames++;
 
-	fprintf(stderr, str);
+	fprintf(stderr, "%s", str);
 }
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
@@ -59,7 +59,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 	char str[4096];
 	thread_stack.num_frames--;
 	_gcc_trace_format_string(str, "returning", &thread_stack, thread_stack.num_frames);
-	fprintf(stderr, str);
+	fprintf(stderr, "%s", str);
 }
 
 void _gcc_trace_get_call_stack(call_stack* stack)
@@ -90,7 +90,7 @@ void _gcc_trace_print_call_stack(call_stack* stack)
 	{
 		char str[4096];
 		_gcc_trace_format_string(str, "", stack, i);
-		fprintf(stderr, str);
+		fprintf(stderr, "%s", str);
 	}
 	fprintf(stderr, "\n----\n\n");
 }
