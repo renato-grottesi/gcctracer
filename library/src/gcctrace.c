@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <time.h>
+#include <sys/time.h>
 
 /* includes for dladdr */
 #define _GNU_SOURCE
@@ -65,13 +65,20 @@ static inline void _gcc_trace_format_string(char* str, const char* word, call_st
 		stack->frames[frame_index].call_site);
 }
 
+static inline unsigned long int _gcc_trace_get_time()
+{
+	struct timeval time;
+	gettimeofday(&time, NULL);
+	return time.tv_sec*1000+time.tv_usec;
+}
+
 void __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	char str[4096];
 
 	thread_stack.frames[thread_stack.num_frames].this_fn=this_fn;
 	thread_stack.frames[thread_stack.num_frames].call_site=call_site;
-	thread_stack.frames[thread_stack.num_frames].time=clock();
+	thread_stack.frames[thread_stack.num_frames].time=_gcc_trace_get_time();
 	thread_stack.frames[thread_stack.num_frames].thread=_gcc_trace_get_tid();
 	thread_stack.frames[thread_stack.num_frames].used_memory_kb=0;
 
@@ -85,7 +92,19 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
 	char str[4096];
+
 	thread_stack.num_frames--;
+
+	thread_stack.frames[thread_stack.num_frames].time=_gcc_trace_get_time();
+
+	if (
+		this_fn != thread_stack.frames[thread_stack.num_frames].this_fn ||
+		call_site != thread_stack.frames[thread_stack.num_frames].call_site
+	   )
+	{
+		fprintf(stderr, "\nInvariant Mismatch! %p from %p\n", this_fn, call_site);
+	}
+
 	_gcc_trace_format_string(str, "returning", &thread_stack, thread_stack.num_frames);
 	fprintf(stderr, "%s", str);
 }

@@ -1,37 +1,37 @@
 # Common make configuration for examples
 
-CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_ -Werror
+CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_ -Wall -Wextra -pedantic -Werror
 
 ifeq ($(OS),Windows_NT)
-    CCFLAGS += -D WIN32
+    CFLAGS += -DWIN32
     CC=gcc
 
     ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
-        CCFLAGS += -D AMD64
+        CFLAGS += -DAMD64
     endif
     ifeq ($(PROCESSOR_ARCHITECTURE),x86)
-        CCFLAGS += -D IA32
+        CFLAGS += -DIA32
     endif
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Linux)
         CC=gcc
-        CCFLAGS += -D LINUX
+        CFLAGS += -DLINUX
     endif
     ifeq ($(UNAME_S),Darwin)
         CC=gcc-mp-4.8
-        CCFLAGS += -D OSX
+        CFLAGS += -DOSX
     endif
 
     UNAME_P := $(shell uname -p)
     ifeq ($(UNAME_P),x86_64)
-        CCFLAGS += -D AMD64
+        CFLAGS += -DAMD64
     endif
     ifneq ($(filter %86,$(UNAME_P)),)
-        CCFLAGS += -D IA32
+        CFLAGS += -DIA32
     endif
     ifneq ($(filter arm%,$(UNAME_P)),)
-        CCFLAGS += -D ARM
+        CFLAGS += -DARM
     endif
 endif
 

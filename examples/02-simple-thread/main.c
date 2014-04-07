@@ -31,6 +31,11 @@ void *thread_func(void *int_ptr)
 {
 	int *x_ptr = (int *)int_ptr;
 	thread_do_internal_work(x_ptr);
+
+#ifdef ARM
+	/* linaro compiler bug */
+	return 0;
+#endif
 }
 
 int main()
