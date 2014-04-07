@@ -1,12 +1,12 @@
 # Make all examples
 
-.PHONY: examples 01-basic 02-simple-thread
+DIRS = 01-basic 02-simple-thread
 
-01-basic:
-	cd 01-basic && $(MAKE)
+.PHONY: examples clean
 
-02-simple-thread:
-	cd 02-simple-thread && $(MAKE)
+examples:
+	for d in $(DIRS); do (cd $$d; $(MAKE) ); done
 
-examples: 01-basic 02-simple-thread
-
+clean:
+	for d in $(DIRS); do (cd $$d; $(MAKE) clean ); done
+	
