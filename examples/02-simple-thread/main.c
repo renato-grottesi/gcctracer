@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-static void pstack()
+void pstack()
 {
 	call_stack my_stack;  
 	_gcc_trace_get_call_stack(&my_stack);
 	_gcc_trace_print_call_stack(&my_stack);
 }
 
-static void increment_int_ptr(int* int_ptr)
+void increment_int_ptr(int* int_ptr)
 {
 	*int_ptr = *int_ptr+1;
 	if(*int_ptr==2)
@@ -19,7 +19,7 @@ static void increment_int_ptr(int* int_ptr)
 	}
 }
 
-static void thread_do_internal_work(int* int_ptr)
+void thread_do_internal_work(int* int_ptr)
 {
 	while((*int_ptr) < 8)
 	{

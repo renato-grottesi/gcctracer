@@ -1,6 +1,6 @@
 # Common make configuration for examples
 
-CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_
+CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_ -Werror
 
 ifeq ($(OS),Windows_NT)
     CCFLAGS += -D WIN32
