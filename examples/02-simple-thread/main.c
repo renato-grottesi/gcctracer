@@ -6,8 +6,9 @@
 void pstack()
 {
 	call_stack my_stack;  
-	_gcc_trace_get_call_stack(&my_stack);
+	_gcc_trace_clone_current_call_stack(&my_stack);
 	_gcc_trace_print_call_stack(&my_stack);
+	_gcc_trace_free_call_stack(&my_stack);
 }
 
 void increment_int_ptr(int* int_ptr)

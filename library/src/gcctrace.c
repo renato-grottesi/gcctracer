@@ -216,7 +216,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 	fprintf(stderr, "%s", str);
 }
 
-void _gcc_trace_get_call_stack(call_stack* stack)
+void _gcc_trace_clone_current_call_stack(call_stack* stack)
 {
 	if(stack)
 	{
@@ -237,6 +237,14 @@ void _gcc_trace_get_call_stack(call_stack* stack)
 			f_out->thread = f_in->thread;
 			f_out->used_bytes = f_in->used_bytes;
 		}
+	}
+}
+
+void _gcc_trace_free_call_stack(call_stack* stack)
+{
+	if(stack)
+	{
+		free(stack->frames);
 	}
 }
 
