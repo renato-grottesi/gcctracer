@@ -135,4 +135,11 @@ void _gcc_trace_free_call_stack(call_stack* stack);
  */
 void _gcc_trace_print_call_stack(call_stack* stack);
 
-/* TODO: Add functions to dump the circular buffer */
+/**
+ * Dump the internal circular buffer containing the history of the last n
+ * function invocations, where n is an hardcoded size for the buffer capacity.
+ *
+ * @param file_name The name of the file where to dump the data
+ */
+void _gcc_trace_dump_history_buffer(const char* file_name);
+

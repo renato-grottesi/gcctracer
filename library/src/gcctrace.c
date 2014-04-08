@@ -11,24 +11,30 @@
 
 #include <gcctrace.h>
 
+typedef struct call_event
+{
+	stack_frame frame;
+	unsigned char is_enter; /**< 1=enter 0=exit */
+	unsigned int stack_depth;
+} call_event;
+
+/* global thread local storage variables */
 __thread unsigned long int TLS_tid = 0;
 __thread call_stack thread_stack = { 0, NULL };
 
-/* TODO: make atomic*/
-static unsigned long int total_mem = 0;
+/* global const */
 static const unsigned int max_call_stack_deep = 1024;
+static const unsigned int c_buff_size = 1024;
+
+/* global atomics */
+static unsigned long int total_mem = 0;
+static unsigned long int c_buff_begin = 0;
+
+/* global variables */
+static call_event *c_buff = NULL;
 
 static void _gcc_trace_init(void) __attribute__((constructor));
 static void _gcc_trace_finish(void) __attribute__((destructor));
-
-void _gcc_trace_init(void)
-{
-}
-
-void _gcc_trace_finish(void)
-{
-	/* TODO: place to dump the whole trace circular buffer to a file */
-}
 
 /* The following functions are standard but hidden */
 extern void *__libc_calloc(size_t nmemb, size_t size);
@@ -36,12 +42,35 @@ extern void *__libc_malloc(size_t size);
 extern void *__libc_realloc(void *ptr, size_t size);
 extern void __libc_free(void* ptr);
 
+void _gcc_trace_init(void)
+{
+	c_buff = __libc_calloc(c_buff_size, sizeof(call_event));
+	c_buff_begin = 0;
+}
+
+void _gcc_trace_finish(void)
+{
+	_gcc_trace_dump_history_buffer("gcctrace.dump");
+
+	if(NULL!=thread_stack.frames)
+	{
+		__libc_free(thread_stack.frames);
+		thread_stack.frames = NULL;
+	}
+
+	if(NULL!=c_buff)
+	{
+		__libc_free(c_buff);
+		c_buff = NULL;
+	}
+}
+
 void *calloc(size_t nmemb, size_t size)
 {
 	void *ptr;
 
 	ptr = __libc_calloc(nmemb, size+8);
-	total_mem += size;
+	__sync_add_and_fetch(&total_mem, size);
 	*((unsigned int *)(ptr)) = size;
 	return (void*)(((unsigned char *)(ptr))+8);
 }
@@ -49,10 +78,11 @@ void *calloc(size_t nmemb, size_t size)
 void *realloc(void *ptr, size_t size)
 {
 	void *rptr;
+	size_t previous_size = *((unsigned int *)(((unsigned char *)ptr)-8));
 
-	total_mem -= *((unsigned int *)(((unsigned char *)ptr)-8));
+	__sync_sub_and_fetch(&total_mem, previous_size);
 	rptr = __libc_realloc( (void *)(((unsigned char *)ptr)-8), size+8);
-	total_mem += size;
+	__sync_add_and_fetch(&total_mem, size);
 	*((unsigned int *)(rptr)) = size;
 	return (void*)(((unsigned char *)(rptr))+8);
 }
@@ -62,7 +92,7 @@ void *malloc(size_t size)
 	void *ptr;
 
 	ptr = __libc_malloc(size+8);
-	total_mem += size;
+	__sync_add_and_fetch(&total_mem, size);
 	*((unsigned int *)(ptr)) = size;
 	return (void*)(((unsigned char *)(ptr))+8);
 }
@@ -71,7 +101,9 @@ void free(void *ptr)
 {
 	if(ptr)
 	{
-		total_mem -= *((unsigned int *)(((unsigned char *)ptr)-8));
+		size_t previous_size;
+		previous_size = *((unsigned int *)(((unsigned char *)ptr)-8));
+		__sync_sub_and_fetch(&total_mem, previous_size);
 		__libc_free( (void *)(((unsigned char *)ptr)-8));
 	}
 }
@@ -152,11 +184,12 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	char str[4096];
 	stack_frame* f;
+	unsigned long int c_buff_idx = 0;
 
 	if(NULL==thread_stack.frames)
 	{
-		thread_stack.frames = malloc(
-				max_call_stack_deep * sizeof(stack_frame));
+		size_t frames_size = max_call_stack_deep * sizeof(stack_frame);
+		thread_stack.frames = __libc_malloc(frames_size);
 	}
 
 	f = &(thread_stack.frames[thread_stack.num_frames]);
@@ -172,6 +205,11 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 		"entering", 
 		&thread_stack, 
 		thread_stack.num_frames);
+
+	c_buff_idx = __sync_fetch_and_add(&c_buff_begin, 1) % c_buff_size;
+	c_buff[c_buff_idx].frame = *f;
+	c_buff[c_buff_idx].is_enter = 1;
+	c_buff[c_buff_idx].stack_depth = thread_stack.num_frames;
 
 	thread_stack.num_frames++;
 
@@ -192,6 +230,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
 	char str[4096];
 	stack_frame* f;
+	unsigned long int c_buff_idx = 0;
 
 	thread_stack.num_frames--;
 
@@ -208,6 +247,11 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 			this_fn, 
 			call_site);
 	}
+
+	c_buff_idx = __sync_fetch_and_add(&c_buff_begin, 1) % c_buff_size;
+	c_buff[c_buff_idx].frame = *f;
+	c_buff[c_buff_idx].is_enter = 0;
+	c_buff[c_buff_idx].stack_depth = thread_stack.num_frames;
 
 	_gcc_trace_format_string(str, 
 		"returning", 
@@ -260,5 +304,46 @@ void _gcc_trace_print_call_stack(call_stack* stack)
 		fprintf(stderr, "%s", str);
 	}
 	fprintf(stderr, "\n----\n\n");
+}
+
+void _gcc_trace_dump_history_buffer(const char* file_name)
+{
+	FILE* f = fopen(file_name, "w+");
+	if(NULL!=f)
+	{
+		unsigned int i;
+
+		for(i=0; i<c_buff_size; i++)
+		{
+			unsigned int c_buff_idx = (i+c_buff_begin)%c_buff_size;
+			call_event* event = &(c_buff[c_buff_idx]);
+
+			/* skip null entries */
+			if(NULL!=event->frame.this_fn)
+			{
+				char func_name[1024];
+
+				_gcc_trace_func_name(
+						event->frame.this_fn,
+						func_name, 
+						1024);
+
+				fprintf(
+						f, 
+						"%s,%d,%s,%p,%p,%ld,%ld,%ld\n",
+						event->is_enter?"ENTER":"EXIT",
+						event->stack_depth,
+						func_name,
+						event->frame.this_fn,
+						event->frame.call_site,
+						event->frame.time,
+						event->frame.thread,
+						event->frame.used_bytes
+				       );
+			}
+		}
+
+		fclose(f);
+	}
 }
 

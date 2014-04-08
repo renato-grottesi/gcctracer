@@ -11,5 +11,5 @@ main: $(OBJ)
 
 .PHONY: clean
 clean:
-	rm -f main.o ../../library/src/gcctrace.o main
+	rm -f main.o ../../library/src/gcctrace.o main gcctrace.dump
 
