@@ -4,7 +4,16 @@
 
 inline unsigned int gcd(unsigned int u, unsigned int v)
 {
-	return (v != 0)?gcd(v, u%v):u;
+	if (v != 0)
+	{
+		unsigned int* res = calloc(0, sizeof(unsigned int));
+		unsigned int res_val = 0;
+		*res = gcd(v, u%v);
+		res_val = *res;
+		free(res);
+		return res_val;
+	}
+	return u;
 }
 
 unsigned int readnum()
@@ -26,3 +35,4 @@ int main(void)
 
 	return 0;
 }
+

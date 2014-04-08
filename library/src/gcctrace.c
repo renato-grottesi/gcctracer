@@ -14,6 +14,74 @@
 __thread unsigned long int TLS_tid = 0;
 __thread call_stack thread_stack = { 0, };
 
+/* TODO: make atomic*/
+static unsigned long int total_mem = 0;
+
+static void _gcc_trace_init(void) __attribute__((constructor));
+static void _gcc_trace_finish(void) __attribute__((destructor));
+
+void _gcc_trace_init(void)
+{
+}
+
+void _gcc_trace_finish(void)
+{
+}
+
+/* The following functions are standard but hidden */
+extern void *__libc_calloc(size_t nmemb, size_t size);
+extern void *__libc_malloc(size_t size);
+extern void *__libc_realloc(void *ptr, size_t size);
+extern void __libc_free(void* ptr);
+
+void *calloc(size_t nmemb, size_t size)
+{
+	void *ptr;
+
+	ptr = __libc_calloc(nmemb, size+8);
+
+	total_mem += size;
+	*((unsigned int *)(ptr)) = size;
+
+	return (void*)(((unsigned char *)(ptr))+8);
+}
+
+void *realloc(void *ptr, size_t size)
+{
+	void *rptr;
+
+	total_mem -= *((unsigned int *)(((unsigned char *)ptr)-8));
+
+	rptr = __libc_realloc( (void *)(((unsigned char *)ptr)-8), size+8);
+
+	total_mem += size;
+	*((unsigned int *)(rptr)) = size;
+
+	return (void*)(((unsigned char *)(rptr))+8);
+}
+
+void *malloc(size_t size)
+{
+	void *ptr;
+
+	ptr = __libc_malloc(size+8);
+
+	total_mem += size;
+	*((unsigned int *)(ptr)) = size;
+
+	return (void*)(((unsigned char *)(ptr))+8);
+}
+
+void free(void *ptr)
+{
+	if(ptr)
+	{
+		total_mem -= *((unsigned int *)(((unsigned char *)ptr)-8));
+
+		__libc_free( (void *)(((unsigned char *)ptr)-8));
+	}
+}
+
 static inline int _gcc_trace_get_tid()
 {
 	if(!TLS_tid)
@@ -54,8 +122,9 @@ static inline void _gcc_trace_format_string(char* str, const char* word, call_st
 	for(i=0; i<frame_index&& i<1023; i++) tabs[i]='\t';
 	tabs[i] = '\0';
 
-	snprintf(str, 4096, "%ld %s [%ld] #%d %s %p (%s) from %p\n", 
+	snprintf(str, 4096, "%ld [%ld bytes] %s [%ld] #%d %s %p (%s) from %p\n", 
 		stack->frames[frame_index].time, 
+		stack->frames[frame_index].used_bytes,
 		tabs, 
 		stack->frames[frame_index].thread,
 		frame_index, 
@@ -80,7 +149,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 	thread_stack.frames[thread_stack.num_frames].call_site=call_site;
 	thread_stack.frames[thread_stack.num_frames].time=_gcc_trace_get_time();
 	thread_stack.frames[thread_stack.num_frames].thread=_gcc_trace_get_tid();
-	thread_stack.frames[thread_stack.num_frames].used_memory_kb=0;
+	thread_stack.frames[thread_stack.num_frames].used_bytes=total_mem;
 
 	_gcc_trace_format_string(str, "entering", &thread_stack, thread_stack.num_frames);
 
@@ -96,6 +165,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 	thread_stack.num_frames--;
 
 	thread_stack.frames[thread_stack.num_frames].time=_gcc_trace_get_time();
+	thread_stack.frames[thread_stack.num_frames].used_bytes=total_mem;
 
 	if (
 		this_fn != thread_stack.frames[thread_stack.num_frames].this_fn ||
@@ -123,7 +193,7 @@ void _gcc_trace_get_call_stack(call_stack* stack)
 			stack->frames[i].call_site = thread_stack.frames[i].call_site;
 			stack->frames[i].time = thread_stack.frames[i].time;
 			stack->frames[i].thread = thread_stack.frames[i].thread;
-			stack->frames[i].used_memory_kb = thread_stack.frames[i].used_memory_kb;
+			stack->frames[i].used_bytes= thread_stack.frames[i].used_bytes;
 		}
 	}
 }
