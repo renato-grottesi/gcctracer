@@ -13,9 +13,10 @@
 
 typedef struct call_event
 {
-	stack_frame frame;
+	stack_frame frame; /**< structure containing the common frame data */
 	unsigned char is_enter; /**< 1=enter 0=exit */
-	unsigned int stack_depth;
+	long int delta_mem; /**< how much memory was allocated/freed */
+	unsigned int stack_depth; /**< depth of the stack fo this event */
 } call_event;
 
 /* global thread local storage variables */
@@ -33,14 +34,33 @@ static unsigned long int c_buff_begin = 0;
 /* global variables */
 static call_event *c_buff = NULL;
 
+/* contructors and destructors marked for no instrumentation */
 static void _gcc_trace_init(void) __attribute__((constructor));
 static void _gcc_trace_finish(void) __attribute__((destructor));
 
-/* The following functions are standard but hidden */
+/* protptypes for libc functions that are standard but hidden */
 extern void *__libc_calloc(size_t nmemb, size_t size);
 extern void *__libc_malloc(size_t size);
 extern void *__libc_realloc(void *ptr, size_t size);
 extern void __libc_free(void* ptr);
+
+/* cyg_profile prototypes marked for no instrumentation */
+void __cyg_profile_func_enter(void *this_fn, void *call_site) 
+	__attribute__((no_instrument_function));
+void __cyg_profile_func_exit(void *this_fn, void *call_site) 
+	__attribute__((no_instrument_function));
+
+/* libc alloc prototypes marked for no instrumentation */
+void* malloc(size_t size)
+	__attribute__((no_instrument_function));
+void free(void *ptr) 
+	__attribute__((no_instrument_function));
+void *calloc(size_t nmemb, size_t size) 
+	__attribute__((no_instrument_function));
+void *realloc(void *ptr, size_t size) 
+	__attribute__((no_instrument_function));
+
+/* -------- implementation of gcctrace functions starts here -------- */
 
 void _gcc_trace_init(void)
 {
@@ -209,6 +229,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 	c_buff_idx = __sync_fetch_and_add(&c_buff_begin, 1) % c_buff_size;
 	c_buff[c_buff_idx].frame = *f;
 	c_buff[c_buff_idx].is_enter = 1;
+	c_buff[c_buff_idx].delta_mem = 0;
 	c_buff[c_buff_idx].stack_depth = thread_stack.num_frames;
 
 	thread_stack.num_frames++;
@@ -231,13 +252,17 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 	char str[4096];
 	stack_frame* f;
 	unsigned long int c_buff_idx = 0;
+	unsigned long int used_memory_at_exit = total_mem;
+	long int delta_mem;
 
 	thread_stack.num_frames--;
 
 	f = &(thread_stack.frames[thread_stack.num_frames]);
 
+	delta_mem = used_memory_at_exit - f->used_bytes;
+
 	f->time=_gcc_trace_get_time();
-	f->used_bytes=total_mem;
+	f->used_bytes=used_memory_at_exit;
 
 	if (this_fn != f->this_fn || call_site != f->call_site)
 	{
@@ -251,6 +276,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 	c_buff_idx = __sync_fetch_and_add(&c_buff_begin, 1) % c_buff_size;
 	c_buff[c_buff_idx].frame = *f;
 	c_buff[c_buff_idx].is_enter = 0;
+	c_buff[c_buff_idx].delta_mem = delta_mem;
 	c_buff[c_buff_idx].stack_depth = thread_stack.num_frames;
 
 	_gcc_trace_format_string(str, 
@@ -330,7 +356,8 @@ void _gcc_trace_dump_history_buffer(const char* file_name)
 
 				fprintf(
 						f, 
-						"%s,%d,%s,%p,%p,%ld,%ld,%ld\n",
+						"%s,%d,%s,%p,%p,%ld,%ld,"
+						"%ld,%ld\n",
 						event->is_enter?"ENTER":"EXIT",
 						event->stack_depth,
 						func_name,
@@ -338,7 +365,8 @@ void _gcc_trace_dump_history_buffer(const char* file_name)
 						event->frame.call_site,
 						event->frame.time,
 						event->frame.thread,
-						event->frame.used_bytes
+						event->frame.used_bytes,
+						event->delta_mem
 				       );
 			}
 		}

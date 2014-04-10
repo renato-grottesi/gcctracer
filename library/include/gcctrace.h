@@ -44,70 +44,13 @@ typedef struct stack_frame
 /**
  * @brief Full calling stack
  *
- * Full calling stack 
+ * Structure that contains a full calling stack 
  */
 typedef struct call_stack
 {
 	unsigned int num_frames; /**< How deep is the stack */
 	stack_frame *frames; /**< Stack frames array */
 } call_stack;
-
-/**
- * @brief enter function
- *
- * This function will be called before any other function can start
- *
- * @param this_fn Function getting called
- * @param call_site Place in the source code where @p this_func 
- * is getting called
- */
-void __cyg_profile_func_enter(void *this_fn, void *call_site) 
-	__attribute__((no_instrument_function));
-
-/**
- * @brief exit function
- *
- * This function will be called before any other function returns
- *
- * @param this_fn Function that was called
- * @param call_site Place in the source code where this_func was called
- */
-void __cyg_profile_func_exit(void *this_fn, void *call_site) 
-	__attribute__((no_instrument_function));
-
-/**
- * libc malloc function wrapper
- *
- * @param size How many bytes to allocate
- */
-void* malloc(size_t size)
-	__attribute__((no_instrument_function));
-
-/**
- * libc free function wrapper
- *
- * @param ptr The pointer to free
- */
-void free(void *ptr) 
-	__attribute__((no_instrument_function));
-
-/**
- * libc calloc function wrapper
- *
- * @param nmemb Numer of members to allocate
- * @param size How many bytes to allocate
- */
-void *calloc(size_t nmemb, size_t size) 
-	__attribute__((no_instrument_function));
-
-/**
- * libc realloc function wrapper
- *
- * @param ptr The pointer to free
- * @param size How many bytes to allocate
- */
-void *realloc(void *ptr, size_t size) 
-	__attribute__((no_instrument_function));
 
 /**
  * Copy the current call stack inside the input parameter.

@@ -1,4 +1,3 @@
-#include <gcctrace.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -16,22 +15,32 @@ inline unsigned int gcd(unsigned int u, unsigned int v)
 	return u;
 }
 
-unsigned int readnum()
+unsigned int * readnum()
 {
-	return ((unsigned int)rand()) % 4096;
+	unsigned int *res = malloc(sizeof(unsigned int));
+	*res = ((unsigned int)rand()) % 4096;
+	return res;
+}
+
+void freenum(unsigned int *num)
+{
+	free(num);
 }
 
 int main(void)
 {
-	unsigned int a = 0;
-	unsigned int b = 0;
+	unsigned int *a;
+	unsigned int *b;
 	unsigned int res = 0;
 
 	srand(1);
 	a = readnum();
 	b = readnum();
-	res = gcd(a, b);
-	printf("gcd(%d, %d) = %d\n", a, b, res);
+	res = gcd(*a, *b);
+	printf("gcd(%d, %d) = %d\n", *a, *b, res);
+
+	freenum(a);
+	freenum(b);
 
 	return 0;
 }
