@@ -1,6 +1,10 @@
 # Common make configuration for examples
 
-CFLAGS=-I ../../library/include/ -finstrument-functions -finstrument-functions-exclude-function-list=_gcc_trace_ -Wall -Wextra -pedantic -Werror
+LDFLAGS=-lgcctracer -Wl,--export-dynamic
+
+CFLAGS=-finstrument-functions 
+CFLAGS+=-finstrument-functions-exclude-function-list=_gcc_trace_ 
+CFLAGS+=-Wall -Wextra -pedantic -Werror
 
 ifeq ($(OS),Windows_NT)
     CFLAGS += -DWIN32

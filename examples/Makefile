@@ -9,4 +9,5 @@ examples:
 
 clean:
 	for d in $(DIRS); do (cd $$d; $(MAKE) clean ); done
+	rm gcctrace.dump
 	

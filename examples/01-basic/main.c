@@ -1,3 +1,30 @@
+/****************************************************************************
+ * Copyright (C) 2014 by Renato Grottesi                                    *
+ *                                                                          *
+ * This file is part of gcctrace.                                           *
+ *                                                                          *
+ *   gcctrace is free software: you can redistribute it and/or modify it    *
+ *   under the terms of the GNU Lesser General Public License as published  *
+ *   by the Free Software Foundation, either version 3 of the License, or   *
+ *   (at your option) any later version.                                    *
+ *                                                                          *
+ *   gcctrace is distributed in the hope that it will be useful,            *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+ *   GNU Lesser General Public License for more details.                    *
+ *                                                                          *
+ *   You should have received a copy of the GNU Lesser General Public       *
+ *   License along with gcctrace.                                           *
+ *   If not, see <http://www.gnu.org/licenses/>.                            *
+ ****************************************************************************/
+
+/**
+ * @file main.c
+ * @author Renato Grottesi
+ * @date 7 Apr 2014
+ * @brief Main file to include gcctrace's functionalities
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
