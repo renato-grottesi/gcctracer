@@ -25,16 +25,7 @@
  * @brief Main file to include gcctrace's functionalities
  */
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/time.h>
-
-/* includes for dladdr */
-#define _GNU_SOURCE
-#define __USE_GNU
-#include <dlfcn.h>
 
 #include <gcctracer.h>
 
@@ -46,12 +37,6 @@ extern void *__libc_calloc(size_t nmemb, size_t size);
 extern void *__libc_malloc(size_t size);
 extern void *__libc_realloc(void *ptr, size_t size);
 extern void __libc_free(void* ptr);
-
-/* cyg_profile prototypes marked for no instrumentation */
-void __cyg_profile_func_enter(void *this_fn, void *call_site) 
-	__attribute__((no_instrument_function));
-void __cyg_profile_func_exit(void *this_fn, void *call_site) 
-	__attribute__((no_instrument_function));
 
 /* libc alloc prototypes marked for no instrumentation */
 void* malloc(size_t size)
@@ -110,3 +95,4 @@ unsigned long int _gcc_trace_get_heap_memory()
 {
 	return total_mem;
 }
+

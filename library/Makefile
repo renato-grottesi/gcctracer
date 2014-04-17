@@ -1,7 +1,7 @@
 DEPS=src/gcctracer.c src/memwrapper.c
 OBJ=src/gcctracer.o src/memwrapper.c
 
-CFLAGS=-I include 
+CFLAGS=-Iinclude 
 CFLAGS+=-finstrument-functions 
 CFLAGS+=-finstrument-functions-exclude-function-list=_gcc_trace_ 
 CFLAGS+=-fPIC
@@ -19,8 +19,6 @@ all: libgcctracer.so
 
 .PHONY: install
 install:
-	@echo install
-	cp libgcctracer.so `$(CC) -print-search-dirs | grep install | cut -d' ' -f2`
 	cp libgcctracer.so /usr/lib/
 	cp include/gcctracer.h /usr/include/
 

@@ -2,9 +2,7 @@
 
 LDFLAGS=-lgcctracer -Wl,--export-dynamic
 
-CFLAGS=-finstrument-functions 
-CFLAGS+=-finstrument-functions-exclude-function-list=_gcc_trace_ 
-CFLAGS+=-Wall -Wextra -pedantic -Werror
+CFLAGS=-finstrument-functions -Wall -Wextra -pedantic -Werror
 
 ifeq ($(OS),Windows_NT)
     CFLAGS += -DWIN32
