@@ -32,6 +32,11 @@
 /* global atomics */
 static unsigned long int total_mem = 0;
 
+/* global constants */
+static const size_t hd = 8; /* hidden data */
+static const size_t hd_mask = 0xF; /* hidden data mask */
+static const size_t hd_imask = ~0xF; /* hidden data inverted mask */
+
 /* protptypes for libc functions that are standard but hidden */
 extern void *__libc_calloc(size_t nmemb, size_t size);
 extern void *__libc_malloc(size_t size);
@@ -48,46 +53,75 @@ void *calloc(size_t nmemb, size_t size)
 void *realloc(void *ptr, size_t size) 
 	__attribute__((no_instrument_function));
 
+static inline size_t _gcc_trace_align_address(size_t size)
+{
+	/* allocate hd extra bytes for hidden data */
+	/* align to */
+	return (size + hd + hd_mask) & hd_imask;
+}
+
+static inline void *_gcc_trace_hidden_pointer(void *ptr)
+{
+	return (void*)(((unsigned char *)(ptr))+hd);
+}
+
+static inline void *_gcc_trace_original_pointer(void *ptr)
+{
+	return (void *)(((unsigned char *)ptr)-hd);
+}
+
+static inline void _gcc_trace_set_hidden_size(size_t size, void* ptr)
+{
+	*((unsigned int *)(ptr)) = size;
+}
+
+static inline size_t _gcc_trace_get_hidden_size(void* ptr)
+{
+	return *((unsigned int *)(((unsigned char *)ptr)-hd));
+}
+
 void *calloc(size_t nmemb, size_t size)
 {
 	void *ptr;
+	size_t nsize = _gcc_trace_align_address(size);
 
-	ptr = __libc_calloc(nmemb, size+8);
+	ptr = __libc_calloc(nmemb, nsize);
 	__sync_add_and_fetch(&total_mem, size);
-	*((unsigned int *)(ptr)) = size;
-	return (void*)(((unsigned char *)(ptr))+8);
+	_gcc_trace_set_hidden_size(size, ptr);
+	return _gcc_trace_hidden_pointer(ptr);
 }
 
 void *realloc(void *ptr, size_t size)
 {
 	void *rptr;
-	size_t previous_size = *((unsigned int *)(((unsigned char *)ptr)-8));
+	size_t nsize = _gcc_trace_align_address(size);
+	size_t previous_size = _gcc_trace_get_hidden_size(ptr);
 
 	__sync_sub_and_fetch(&total_mem, previous_size);
-	rptr = __libc_realloc( (void *)(((unsigned char *)ptr)-8), size+8);
+	rptr = __libc_realloc(_gcc_trace_original_pointer(ptr), nsize);
 	__sync_add_and_fetch(&total_mem, size);
-	*((unsigned int *)(rptr)) = size;
-	return (void*)(((unsigned char *)(rptr))+8);
+	_gcc_trace_set_hidden_size(size, rptr);
+	return _gcc_trace_hidden_pointer(rptr);
 }
 
 void *malloc(size_t size)
 {
 	void *ptr;
+	size_t nsize = _gcc_trace_align_address(size);
 
-	ptr = __libc_malloc(size+8);
+	ptr = __libc_malloc(nsize);
 	__sync_add_and_fetch(&total_mem, size);
-	*((unsigned int *)(ptr)) = size;
-	return (void*)(((unsigned char *)(ptr))+8);
+	_gcc_trace_set_hidden_size(size, ptr);
+	return _gcc_trace_hidden_pointer(ptr);
 }
 
 void free(void *ptr)
 {
 	if(ptr)
 	{
-		size_t previous_size;
-		previous_size = *((unsigned int *)(((unsigned char *)ptr)-8));
+		size_t previous_size = _gcc_trace_get_hidden_size(ptr);
 		__sync_sub_and_fetch(&total_mem, previous_size);
-		__libc_free( (void *)(((unsigned char *)ptr)-8));
+		__libc_free(_gcc_trace_original_pointer(ptr));
 	}
 }
 
